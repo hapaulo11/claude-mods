@@ -79,11 +79,10 @@ export const register: Register = on => {
     const total = list.length
     const courante = list.find(x => x.statut === 'in_progress')
     const fini = faites === total
+    const numero = Math.min(faites + (courante ? 1 : 0), total)
     const sousTitre = fini
-      ? 'tout est fait'
-      : courante
-        ? courante.enCours
-        : `${faites} sur ${total} étapes`
+      ? `${total} étapes sur ${total} · tout est fait`
+      : `Étape ${Math.max(numero, 1)} sur ${total}${courante ? ' · ' + courante.enCours : ''}`
 
     const { Box, Button, Text } = $.ui.resolve(e)
 
@@ -101,6 +100,7 @@ export const register: Register = on => {
     }
 
     const { Svg } = $.ui.resolve(e)
+    const dessin = frise(list)
     return (
       <Box
         flexDirection="row"
@@ -115,9 +115,7 @@ export const register: Register = on => {
           <Text bold>Avancement</Text>
           <Text dimColor>{sousTitre}</Text>
         </Box>
-        <Box flexGrow={1}>
-          <Svg source={frise(list)} alt={`Étape ${Math.min(faites + 1, total)} sur ${total}`} />
-        </Box>
+        <Svg source={dessin.source} width={dessin.largeur} height={dessin.hauteur} alt={sousTitre} />
         {fini ? <Button key="effacer" label="Effacer" onPress={() => update($, etapes, () => [])} /> : null}
       </Box>
     )
@@ -133,8 +131,8 @@ function xml(t: string): string {
 }
 
 // Frise : points reliés par un trait, nom de l'étape dessous, cercle orange sur l'étape en cours
-function frise(list: Etape[]): string {
-  const pas = 150
+function frise(list: Etape[]): { source: string; largeur: number; hauteur: number } {
+  const pas = 120
   const w = pas * list.length
   const h = 62
   const y = 18
@@ -156,9 +154,16 @@ function frise(list: Etape[]): string {
             ? `<circle cx="${c}" cy="${y}" r="13" fill="none" stroke="${orange}" stroke-width="2.5"/><circle cx="${c}" cy="${y}" r="9" fill="none" stroke="${gris}" stroke-width="1.5"/>`
             : `<circle cx="${c}" cy="${y}" r="9" fill="none" stroke="${gris}" stroke-width="1.5"/>`
       const couleur = x.statut === 'in_progress' ? orange : gris
-      const texte = `<text x="${c}" y="${y + 36}" text-anchor="middle" font-family="-apple-system,Segoe UI,sans-serif" font-size="14" fill="${couleur}">${xml(court(x.titre, 16))}</text>`
+      const texte = `<text x="${c}" y="${y + 36}" text-anchor="middle" font-family="-apple-system,Segoe UI,sans-serif" font-size="13" fill="${couleur}">${xml(court(x.titre, 14))}</text>`
       return point + texte
     })
     .join('')
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">${traits}${points}</svg>`
+  // Taille fixe en pixels : sans elle, l'application peut lui donner une largeur nulle
+  const largeur = Math.min(w, 480)
+  const hauteur = Math.round((h * largeur) / w)
+  return {
+    source: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${largeur}" height="${hauteur}">${traits}${points}</svg>`,
+    largeur,
+    hauteur,
+  }
 }

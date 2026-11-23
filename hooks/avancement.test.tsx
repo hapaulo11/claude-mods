@@ -18,7 +18,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ plugin: 'avancement', surface, component: 'AbovePrompt', props: {} as never })
     const txt = JSON.stringify(await ui.find({ type: "Box" }))
     expect(txt).toContain('Écrire')
-    expect(txt).toContain(surface === 'terminal' ? '1/2' : 'Écriture')
+    expect(txt).toContain(surface === 'terminal' ? '1/2' : 'Étape 2 sur 2 · Écriture')
     if (surface === 'desktop') expect(txt).toContain('#d97757')
     await ui.unmount()
   })
