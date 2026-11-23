@@ -1,0 +1,5 @@
+{
+  "name": "pelion-mods",
+  "owner": { "name": "hapaulo11" },
+  "plugins": [{ "name": "avancement", "source": "./" }]
+}
