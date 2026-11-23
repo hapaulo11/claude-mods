@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { Register, RenderChildren } from 'claude-code'
+import type { Register } from 'claude-code'
 
 import type { Etape } from '../types'
 
@@ -99,48 +99,54 @@ export const register: Register = on => {
       )
     }
 
-    // Frise en texte : point plein = fait, cercle orange = en cours, cercle vide = à faire
+    // Frise en texte à largeur fixe : deux lignes (points, puis noms), découpées en
+    // trois parts (fait, en cours en orange, à faire en gris) pour garder l'alignement
     const orange = '#d97757'
-    const morceaux: RenderChildren[] = []
-    list.forEach((x, i) => {
-      if (i > 0) {
-        morceaux.push(
-          <Box key={`trait-${i}`} flexDirection="column" alignItems="center" flexGrow={1}>
-            <Text dimColor={list[i - 1].statut !== 'completed'}>──────</Text>
-            <Text> </Text>
-          </Box>,
-        )
+    const L = 14
+    const centre = (t: string, c: string) => {
+      const reste = L - t.length
+      const g = Math.floor(reste / 2)
+      return c.repeat(g) + t + c.repeat(reste - g)
+    }
+    const point = (i: number) => {
+      const x = list[i]
+      const sym = x.statut === 'completed' ? '●' : x.statut === 'in_progress' ? '◉' : '○'
+      const moitie = Math.floor((L - 1) / 2)
+      const gauche = (i > 0 ? '─' : ' ').repeat(moitie)
+      const droite = (i < list.length - 1 ? '─' : ' ').repeat(L - 1 - moitie)
+      return gauche + sym + droite
+    }
+    const nom = (i: number) => centre(court(list[i].titre, L - 2), ' ')
+    const iActif = list.findIndex(x => x.statut === 'in_progress')
+    const coupe = iActif >= 0 ? iActif : faites
+    const parts = (f: (i: number) => string) => {
+      const idx = list.map((_, i) => i)
+      return {
+        avant: idx.slice(0, coupe).map(f).join(''),
+        actif: iActif >= 0 ? f(iActif) : '',
+        apres: idx.slice(iActif >= 0 ? iActif + 1 : coupe).map(f).join(''),
       }
-      const fait = x.statut === 'completed'
-      const actif = x.statut === 'in_progress'
-      morceaux.push(
-        <Box key={`etape-${i}`} flexDirection="column" alignItems="center">
-          <Text color={actif ? orange : undefined} dimColor={!fait && !actif} bold={actif}>
-            {fait ? '●' : actif ? '◉' : '○'}
-          </Text>
-          <Text size="footnote" color={actif ? orange : undefined} dimColor={!actif}>
-            {court(x.titre, 16)}
-          </Text>
-        </Box>,
-      )
-    })
+    }
+    const p1 = parts(point)
+    const p2 = parts(nom)
 
     return (
-      <Box
-        flexDirection="row"
-        alignItems="center"
-        gap={2}
-        paddingX={2}
-        paddingY={1}
-        borderStyle="round"
-        borderDimColor
-      >
-        <Box flexDirection="column" minWidth={120}>
-          <Text bold>Avancement</Text>
-          <Text dimColor>{sousTitre}</Text>
-        </Box>
-        <Box flexDirection="row" alignItems="flex-start" flexGrow={1}>
-          {morceaux}
+      <Box flexDirection="column" paddingX={1} borderStyle="round" borderDimColor>
+        <Text bold>Avancement</Text>
+        <Text dimColor>{sousTitre}</Text>
+        <Box overflowX="scroll">
+          <Box flexDirection="column">
+            <Box flexDirection="row">
+              <Text mono>{p1.avant}</Text>
+              <Text mono color={orange}>{p1.actif}</Text>
+              <Text mono dimColor>{p1.apres}</Text>
+            </Box>
+            <Box flexDirection="row">
+              <Text mono dimColor>{p2.avant}</Text>
+              <Text mono color={orange}>{p2.actif}</Text>
+              <Text mono dimColor>{p2.apres}</Text>
+            </Box>
+          </Box>
         </Box>
         {fini ? <Button key="effacer" label="Effacer" onPress={() => update($, etapes, () => [])} /> : null}
       </Box>

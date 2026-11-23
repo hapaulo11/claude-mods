@@ -1,6 +1,6 @@
 {
   "name": "avancement",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Bande d'avancement des étapes au-dessus de la saisie, et compaction automatique vers 400 000 tokens",
   "types": "./types/index.d.ts",
   "license": "MIT"
