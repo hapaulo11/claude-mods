@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { Register } from 'claude-code'
+import type { Register, RenderChildren } from 'claude-code'
 
 import type { Etape } from '../types'
 
@@ -99,8 +99,32 @@ export const register: Register = on => {
       )
     }
 
-    const { Svg } = $.ui.resolve(e)
-    const dessin = frise(list)
+    // Frise en texte : point plein = fait, cercle orange = en cours, cercle vide = à faire
+    const orange = '#d97757'
+    const morceaux: RenderChildren[] = []
+    list.forEach((x, i) => {
+      if (i > 0) {
+        morceaux.push(
+          <Box key={`trait-${i}`} flexDirection="column" alignItems="center" flexGrow={1}>
+            <Text dimColor={list[i - 1].statut !== 'completed'}>──────</Text>
+            <Text> </Text>
+          </Box>,
+        )
+      }
+      const fait = x.statut === 'completed'
+      const actif = x.statut === 'in_progress'
+      morceaux.push(
+        <Box key={`etape-${i}`} flexDirection="column" alignItems="center">
+          <Text color={actif ? orange : undefined} dimColor={!fait && !actif} bold={actif}>
+            {fait ? '●' : actif ? '◉' : '○'}
+          </Text>
+          <Text size="footnote" color={actif ? orange : undefined} dimColor={!actif}>
+            {court(x.titre, 16)}
+          </Text>
+        </Box>,
+      )
+    })
+
     return (
       <Box
         flexDirection="row"
@@ -111,11 +135,13 @@ export const register: Register = on => {
         borderStyle="round"
         borderDimColor
       >
-        <Box flexDirection="column" minWidth={110}>
+        <Box flexDirection="column" minWidth={120}>
           <Text bold>Avancement</Text>
           <Text dimColor>{sousTitre}</Text>
         </Box>
-        <Svg source={dessin.source} width={dessin.largeur} height={dessin.hauteur} alt={sousTitre} />
+        <Box flexDirection="row" alignItems="flex-start" flexGrow={1}>
+          {morceaux}
+        </Box>
         {fini ? <Button key="effacer" label="Effacer" onPress={() => update($, etapes, () => [])} /> : null}
       </Box>
     )
@@ -126,44 +152,4 @@ function court(t: string, n: number): string {
   return t.length > n ? t.slice(0, n - 1) + '…' : t
 }
 
-function xml(t: string): string {
-  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
 
-// Frise : points reliés par un trait, nom de l'étape dessous, cercle orange sur l'étape en cours
-function frise(list: Etape[]): { source: string; largeur: number; hauteur: number } {
-  const pas = 120
-  const w = pas * list.length
-  const h = 62
-  const y = 18
-  const cx = (i: number) => pas / 2 + i * pas
-  const gris = '#9b9b9b'
-  const orange = '#d97757'
-  let traits = ''
-  for (let i = 0; i < list.length - 1; i++) {
-    const fait = list[i].statut === 'completed'
-    traits += `<line x1="${cx(i)}" y1="${y}" x2="${cx(i + 1)}" y2="${y}" stroke="${gris}" stroke-width="2" opacity="${fait ? 0.9 : 0.35}"/>`
-  }
-  const points = list
-    .map((x, i) => {
-      const c = cx(i)
-      const point =
-        x.statut === 'completed'
-          ? `<circle cx="${c}" cy="${y}" r="9" fill="#b5b5b5"/>`
-          : x.statut === 'in_progress'
-            ? `<circle cx="${c}" cy="${y}" r="13" fill="none" stroke="${orange}" stroke-width="2.5"/><circle cx="${c}" cy="${y}" r="9" fill="none" stroke="${gris}" stroke-width="1.5"/>`
-            : `<circle cx="${c}" cy="${y}" r="9" fill="none" stroke="${gris}" stroke-width="1.5"/>`
-      const couleur = x.statut === 'in_progress' ? orange : gris
-      const texte = `<text x="${c}" y="${y + 36}" text-anchor="middle" font-family="-apple-system,Segoe UI,sans-serif" font-size="13" fill="${couleur}">${xml(court(x.titre, 14))}</text>`
-      return point + texte
-    })
-    .join('')
-  // Taille fixe en pixels : sans elle, l'application peut lui donner une largeur nulle
-  const largeur = Math.min(w, 480)
-  const hauteur = Math.round((h * largeur) / w)
-  return {
-    source: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${largeur}" height="${hauteur}">${traits}${points}</svg>`,
-    largeur,
-    hauteur,
-  }
-}
